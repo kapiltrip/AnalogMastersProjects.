@@ -2,1198 +2,973 @@
 
 ## Project Statement
 
-Design, size, simulate, verify, and document a Miller-compensated two-stage CMOS op-amp, with explicit evidence for gain, unity-gain bandwidth, phase margin, slew rate, output swing, load-drive behavior, and the trade-offs created by compensation.
+Design, size, simulate, verify, and document a Miller-compensated two-stage CMOS op-amp, but treat the project first as a learning project and only then as a final circuit project.
 
-## Executive Summary
+The real goal is not just to "finish an op-amp."
 
-This project is strong for a master's portfolio because it forces a full analog IC design chain:
+The real goal is to learn, in the correct order:
 
-1. feedback and stability intuition,
-2. MOS small-signal modeling,
-3. transistor-level hand design,
-4. compensation strategy,
-5. simulation-driven verification,
-6. interpretation of trade-offs,
-7. optional layout and post-layout closure.
+1. feedback and why open-loop gain is not enough,
+2. MOS small-signal behavior and biasing,
+3. differential pair operation,
+4. frequency response, poles, zeros, and phase margin,
+5. why a second stage helps and why it creates a stability problem,
+6. how Miller compensation fixes one problem while creating other trade-offs,
+7. how to verify an analog design correctly in simulation,
+8. how to explain every design choice in a thesis or viva.
 
-The project should never be framed as "I drew an op-amp schematic."
+## This Is A Learning-Centric Project
 
-The defensible finish line is:
+This file is written for a learning-centric master's project.
 
-- a frozen spec table,
-- a clear architecture justification,
-- first-pass equations and sizing logic,
-- a reproducible testbench suite,
-- measured trends that match the equations,
-- one clear trade-off story,
-- optional layout/post-layout evidence if time allows.
+That means:
 
-## Why This Plan Exists
+- resources matter,
+- concept order matters,
+- what I learned each week matters,
+- why I chose one circuit over another matters,
+- software choice matters because it affects what I can realistically finish,
+- final plots matter, but only after the conceptual chain is solid.
 
-This file is meant to serve as:
+So this plan is built around four questions:
 
-1. a learning roadmap,
-2. a design execution checklist,
-3. a weekly project tracker,
-4. a simulation signoff checklist,
-5. a thesis-writing backbone,
-6. a viva preparation guide.
+1. What exactly must I learn?
+2. Which resource should teach it?
+3. What should I do right after watching or reading?
+4. Which circuit or simulation task proves that I actually learned it?
 
-At the end of each major week, I should be able to answer:
+## What This Project Should Teach Me
 
-1. What concept did I learn?
-2. What design decision did that concept unlock?
-3. What exact equation or estimate did I derive?
-4. What simulation did I run?
-5. What mismatch or failure remains between theory and behavior?
+By the end of the project, I should be able to explain all of the following in my own words:
 
-## Why This Topology Is A Strong Master's Project
+- why a differential amplifier becomes useful only under feedback,
+- why a single-stage amplifier is not always enough,
+- how gain, bandwidth, phase margin, slew rate, swing, and power are coupled,
+- where the dominant pole and non-dominant poles come from in a two-stage op-amp,
+- what the Miller capacitor is doing physically,
+- why an uncompensated Miller path can create a right-half-plane zero,
+- when a nulling resistor is useful,
+- how to extract loop gain correctly without breaking DC bias,
+- why AC and transient results must agree,
+- why layout and parasitics can move poles and change stability.
 
-A Miller-compensated two-stage CMOS op-amp is a strong project because it naturally exposes the most important analog design dependencies:
+## Why This Final Circuit Is The Right Choice
 
-- high gain is useful only through feedback,
-- more gain stages create more poles,
-- more poles make stability a real design problem,
-- Miller compensation solves one problem while creating other measurable penalties,
-- every specification ties back to transistor-level quantities such as `gm`, `ro`, bias current, overdrive voltage, and capacitance.
+The recommended final circuit for this project is still a Miller-compensated two-stage CMOS op-amp.
 
-That makes the project ideal for a resume because it demonstrates not just design, but diagnosis and reasoning.
+It is the best learning-centric choice because it forces me to understand:
 
-## Current Assumptions And Unknowns
+- differential pair behavior,
+- active loads and current mirrors,
+- gain staging,
+- output swing limits,
+- stability and phase margin,
+- Miller compensation,
+- slew-rate limitation,
+- load sensitivity,
+- verification discipline.
 
-These must be frozen early because they change the entire sizing path.
+If the project were only a single-stage op-amp, I would learn less about compensation and stability.
 
-- Process node / PDK is not yet fixed.
-- Supply voltage is not yet fixed.
-- Load capacitance is not yet fixed.
-- Required output swing is not yet fixed.
-- Input common-mode range is not yet fixed.
-- Power budget is not yet fixed.
-- Whether layout is required is not yet fixed.
-- Whether noise and offset are mandatory measured outputs is not yet fixed.
+If the project were a very advanced low-voltage, rail-to-rail, gain-boosted, or fully differential op-amp from the start, the learning risk would be too high and the schedule would become fragile.
 
-Until those are frozen, all sizing should be treated as provisional.
+So the correct strategy is:
 
-## Main Technical Story Of The Project
+1. learn the building blocks,
+2. study simpler op-amp forms,
+3. then design the final two-stage Miller-compensated op-amp.
 
-The final project should clearly explain this sequence:
+## Circuit Choices Before Final Freeze
 
-1. An op-amp becomes useful when high open-loop gain is controlled by feedback.
-2. A single stage may not simultaneously provide enough gain, output swing, and load drive.
-3. A second stage increases gain and drive capability, but adds another pole.
-4. Multi-pole feedback loops can become unstable, so compensation is required.
-5. Miller compensation creates a dominant pole and splits poles, but also changes bandwidth, slew rate, and zero location.
-6. Therefore the project is not "gain only"; it is a controlled trade-off among gain, speed, stability, swing, load, and power.
+This section answers the question: what circuit path should I study, and why?
 
-## Core Equations And Anchor Relations
+### Option 1: Differential Pair Only
 
-These are the equations that must appear repeatedly in the project report and viva.
+Use this first as a learning block, not as the final project.
 
-- `Av ~ A1 * A2`
-- `Av0 ~ (gm1*ro1)*(gm2*ro2)` as a first-pass small-signal view
-- `wu ~ gm1/Cc`
-- `gm1 ~ wu*Cc = 2*pi*UGB*Cc` when `UGB` is in hertz
-- `SR ~ I/Cc`
-- an uncompensated Miller path can create an `RHP zero ~ gm2/Cc`
-- a series resistor `Rc` can push that zero away, remove it, or move it to the LHP
+Why study it:
 
-These relations imply:
+- it teaches transconductance,
+- it teaches differential versus common-mode behavior,
+- it teaches current steering,
+- it teaches active-load intuition.
 
-- increasing `gm1` usually raises `UGB`,
-- increasing `Cc` usually improves phase margin but lowers `UGB` and slew rate,
-- increasing bias current improves speed and slew rate but costs power,
-- increasing `ro` improves gain but often costs headroom or speed,
-- increasing `CL` makes stability harder,
-- ignoring the RHP zero can make AC and transient results look inconsistent.
+Why it is not enough as the final project:
 
-## Success Criteria
+- gain is limited,
+- output swing and drive are limited,
+- compensation story is weak,
+- thesis story is too small for a strong analog design project.
 
-A strong project outcome is:
+### Option 2: Single-Stage Op-Amp
 
-- one well-justified two-stage architecture,
-- one stable compensation strategy,
-- one correct loop-gain measurement method,
-- one clear sizing sheet,
-- one reproducible simulation bundle,
-- one trade-off sweep set,
-- one short discrepancy log comparing equations and simulations.
+Use this as an intermediate learning circuit.
 
-Novelty is optional. Clarity and correctness are not.
+Good sub-options:
 
-## Weekly Micro-Loop
+- simple differential pair with active load,
+- telescopic cascode,
+- folded cascode.
 
-This project should be run in a fixed weekly loop.
+Why study it:
 
-Each week:
+- it gives one clean high-gain stage,
+- it teaches gain versus swing trade-offs,
+- it teaches biasing more clearly than a full two-stage design,
+- it is the bridge between basic amplifier stages and the final op-amp.
 
-1. Watch the selected lectures or read the selected notes.
-2. Write a 1-page summary in my own words.
-3. Produce one derivation sheet or sizing sheet.
-4. Update one design sheet with actual numbers.
-5. Run one new simulation or build one new testbench.
-6. Write one short failure note explaining what did not match expectation.
+Why it is not the best final learning target:
 
-### Recommended Time Split Per Week
+- it does not force as deep a compensation story,
+- it will not teach multistage stability as strongly as the two-stage design.
 
-- lectures and notes: `4 to 6` hours
-- derivations and sizing math: `2 to 4` hours
-- simulation and debug: `4 to 8` hours
-- documentation and plot cleanup: `1 to 2` hours
+### Option 3: Telescopic Cascode
 
-## Week 0 Decision Gates
+Study this if I want to understand high gain with one stage.
 
-Before deep transistor-level work begins, freeze the following.
+What it teaches:
 
-### System-Level Questions
+- high output resistance,
+- gain through cascoding,
+- limited swing,
+- biasing sensitivity,
+- why it is often used as a first stage.
 
-- What is `VDD`?
-- What is the target load capacitance `CL`?
-- What is the target DC gain?
-- What is the target unity-gain bandwidth or gain-bandwidth?
-- What phase margin is required?
-- What slew rate is required?
-- What output swing is required?
-- What quiescent power budget is acceptable?
-- What input common-mode range is required?
-- Is noise in scope?
-- Is offset in scope?
-- Is layout required?
+From the NPTEL op-amp summary, telescopic cascode is relevant for:
 
-### Why These Questions Matter
+- capacitive loads,
+- low swing circuits,
+- switched-capacitor circuits,
+- first stage of a two-stage op-amp,
+- high-gain design in fine-line processes.
 
-- `CL` directly affects compensation choice and non-dominant pole behavior.
-- `UGB` and `Cc` immediately set a `gm1` target.
-- `SR` and `Cc` immediately set a current target.
-- gain and swing compete through `ro`, current, and headroom.
-- if layout is required, routing and parasitics must be planned early.
+### Option 4: Folded Cascode
 
-### Week 0 Deliverable
+Study this if I want a wider view of one-stage architectures.
 
-Produce a 1-page spec freeze note containing:
+What it teaches:
 
-- supply voltage,
-- target `CL`,
-- target DC gain,
-- target `UGB`,
-- target phase margin,
-- target slew rate,
-- target output swing,
-- power budget,
-- input common-mode assumption,
-- whether layout is included.
+- swing improvement relative to telescopic,
+- a different headroom trade-off,
+- why the circuit is usually noisier and slower than telescopic,
+- extra internal poles and a more involved bias structure.
 
-## Reusable Specification Template
+From the NPTEL op-amp summary, folded cascode generally gives:
 
-Fill this table before the schematic is treated as real.
+- higher swing,
+- higher noise and offset,
+- lower speed than telescopic,
+- a low-frequency pole at the drain of the input pair.
 
-| Item | Target | How It Will Be Verified |
-| --- | --- | --- |
-| Process / PDK | TBD | identify device models and minimum lengths |
-| `VDD` | TBD | DC operating point and swing checks |
-| Load capacitance `CL` | TBD | transient and AC load sweep |
-| DC gain | TBD | open-loop AC / loop-gain result |
-| `UGB` | TBD | loop gain 0 dB crossing |
-| Phase margin | TBD | loop-gain phase at crossover |
-| Slew rate | TBD | large-signal transient |
-| Output swing | TBD | DC sweep or transient output limits |
-| Power / `Iq` | TBD | DC operating point currents |
-| Input common-mode range | TBD | DC bias sweep if included |
-| CMRR / PSRR | optional / TBD | AC injection if in scope |
-| Noise | optional / TBD | output noise simulation |
-| Offset | optional / TBD | mismatch / Monte Carlo if in scope |
-| Layout requirement | yes / no | DRC/LVS/PEX and post-layout reruns |
+### Recommended Final Choice
 
-## Knowledge Map: What Must Be Learned Before What
+The final project should be:
 
-The project should be learned in dependency order, not random topic order.
+- a Miller-compensated two-stage CMOS op-amp,
+- with a simple and explainable first stage,
+- and a common-source second stage.
 
-### Layer 1: Feedback And Stability
+This choice is strongly supported by the NPTEL Analog IC Design material, which treats the two-stage op-amp as a central block-level architecture and explicitly covers dominant-pole compensation, phase margin, slew rate, swing limits, and two-stage Miller compensation.
 
-Must understand:
+## OTA Versus Op-Amp In This Project
 
-- Bode plots,
-- loop gain,
-- poles and zeros,
-- gain crossover,
-- phase margin,
-- why transient ringing and phase margin are linked.
+At transistor level, this project is closely related to an OTA.
 
-Without this layer, compensation becomes guesswork.
+The analog core is basically OTA-like:
 
-### Layer 2: MOS Small-Signal Behavior
+- differential input pair,
+- gain stage,
+- second stage,
+- compensation,
+- bias circuitry.
 
-Must understand:
+But this project is framed as an op-amp project because the learning goals emphasize:
+
+- closed-loop behavior,
+- unity-gain stability,
+- output swing,
+- load drive,
+- time-domain settling,
+- phase margin.
+
+So the most accurate description is:
+
+- the core is OTA-like,
+- the project goal is op-amp behavior under feedback.
+
+## Input Pair Choice: nMOS Or pMOS
+
+This choice should not be guessed.
+
+From the NPTEL op-amp summary:
+
+- nMOS input stage:
+  - higher `gm` for the same current,
+  - better for larger bandwidths,
+  - usually higher flicker noise.
+- pMOS input stage:
+  - lower `gm` for the same current,
+  - usually lower flicker noise,
+  - better for low-noise, low-frequency work.
+
+For a learning-centric first project, a practical rule is:
+
+- if speed and easier `gm` per current matter more, start by exploring nMOS input,
+- if low-frequency noise intuition matters more, also study the pMOS trade-off,
+- do not freeze this choice before I understand common-mode range and noise goals.
+
+## Software Choices
+
+This section answers the question: what software path should I use for this project?
+
+### Path A: University / Commercial Flow
+
+Use this if Cadence is available.
+
+Typical path:
+
+- Cadence Virtuoso for schematic,
+- Spectre for simulation,
+- ADE for benches and sweeps,
+- optional layout and extraction in the Cadence flow.
+
+Why this is strong:
+
+- standard analog IC workflow,
+- easier multirun bench management,
+- better direct analog design ergonomics,
+- easier transition to layout and post-layout work.
+
+Best use case:
+
+- use this for the final project if my lab or university already gives access.
+
+### Path B: Open-Source Full-Custom Flow
+
+Use this if Cadence is not available.
+
+Recommended stack:
+
+- SKY130 PDK,
+- open_pdks,
+- xschem for schematic entry,
+- ngspice for simulation,
+- Magic for layout,
+- Netgen for LVS,
+- KLayout for viewing and checking layout data.
+
+Why this is a valid project path:
+
+- xschem is explicitly aimed at VLSI, ASIC, and analog custom design and emphasizes hierarchy and parametric reuse,
+- ngspice is an open-source SPICE simulator and can read foundry-style device libraries,
+- the SKY130 open PDK is openly documented and usable for test-chip style learning and initial design verification,
+- Magic, Netgen, and KLayout give a complete open layout-verification path.
+
+Best use case:
+
+- use this if I need a serious final flow without commercial tools.
+
+### Path C: Quick Learning Sandbox
+
+Use this only for intuition building, not as the final transistor-level project environment.
+
+Good tools:
+
+- LTspice,
+- TINA-TI,
+- simple ideal-op-amp SPICE environments.
+
+Why use them:
+
+- they are fast for learning feedback,
+- they are fast for learning Bode plots,
+- they are fast for learning phase margin, overshoot, and capacitive-load intuition,
+- TI Precision Labs explicitly uses TINA-TI in its stability teaching flow.
+
+Why not use them as the final project flow:
+
+- they are not the best place to do a full PDK-based transistor-level IC design project,
+- they do not naturally give a clean full-custom analog IC workflow.
+
+### Recommended Software Strategy
+
+Use a two-layer software plan:
+
+1. use LTspice or TINA-TI in the first learning stage for feedback and stability intuition,
+2. use Cadence or xschem/ngspice/SKY130 for the real transistor-level project.
+
+If no commercial tools are available, the most realistic learning-first final path is:
+
+- xschem + ngspice + SKY130,
+- and only add Magic / Netgen / KLayout if layout becomes part of the deliverables.
+
+## How I Must Learn From Videos
+
+This is the most important rule in the whole project.
+
+Watching videos is not learning.
+
+Learning happens only when every video is followed by active work.
+
+For every lecture, I must do this exact loop:
+
+1. Watch the lecture once without taking long notes.
+2. Write a half-page summary in my own words.
+3. Write the 3 to 5 equations or ideas that matter most.
+4. Draw one circuit or one pole-zero picture from memory.
+5. Simulate one tiny example related to the lecture.
+6. Write one thing I still do not understand.
+7. Rewatch only the needed part and resolve that confusion.
+
+If I do not do steps 2 to 7, the lecture stays passive.
+
+## Resource Backbone
+
+The project should use a small set of strong resources, not random videos.
+
+### Resource 1: NPTEL Analog Electronic Circuits, IIT Madras, Prof. Shanthi Pavan
+
+URL:
+
+https://onlinecourses.nptel.ac.in/noc26_ee65/preview
+
+Why it matters:
+
+- it is intuition-heavy,
+- it is explicitly first-principles oriented,
+- its Week 8 to Week 11 sequence maps very well to this project.
+
+Most relevant weeks for this project:
+
+- Week 8: differential pair and common-mode rejection,
+- Week 9: basic two-stage op-amp and parasitic capacitances,
+- Week 10: multistage feedback, stability, phase margin,
+- Week 11: dominant-pole compensation and Miller effect.
+
+What I should learn from it:
+
+- intuitive differential-pair thinking,
+- the physical meaning of poles and parasitic capacitances,
+- why two-stage op-amps are unstable without compensation,
+- what dominant-pole compensation is doing.
+
+### Resource 2: NPTEL Analog IC Design, Prof. Nagendra Krishnapura
+
+URLs:
+
+https://archive.nptel.ac.in/content/syllabus_pdf/117106030.pdf
+https://archive.nptel.ac.in/content/storage2/courses/117106030/nptel-aic/opampsummary.pdf
+
+Why it matters:
+
+- it is directly aligned to transistor-level analog IC design,
+- it explicitly covers feedback, stability, one-stage op-amps, and two-stage Miller-compensated op-amps,
+- it also gives architecture comparisons and input-pair trade-offs.
+
+Most relevant lecture blocks from the course listing:
+
+- Differential Amplifiers,
+- Negative Feedback,
+- Stability of Negative Feedback Systems,
+- Dominant Pole Compensation,
+- One Stage OpAmps,
+- Loop gain and unity loop gain frequency,
+- Phase margin,
+- Single stage opamp realization,
+- Two stage Miller compensated opamp,
+- Two and three stage Miller compensated opamps.
+
+What I should learn from it:
+
+- transistor-level equations and architecture logic,
+- how to go from gain blocks to a real op-amp,
+- how to compare single-stage, telescopic, folded, and two-stage forms,
+- how `gm`, `ro`, `Cc`, and current set performance.
+
+### Resource 3: Razavi Path
+
+Use Razavi as the parallel intuition and textbook spine.
+
+Recommended parallel topics:
+
+- basic op-amp intuition,
+- op-amp circuits,
+- instability in feedback,
+- Bode rules and stability,
+- stability and frequency compensation,
+- op-amp nonidealities.
+
+How to use Razavi correctly:
+
+- do not use Razavi as passive background watching,
+- use Razavi to make the concept feel intuitive,
+- then use NPTEL Analog IC Design to translate that intuition into transistor-level design steps.
+
+### Resource 4: TI Precision Labs - Op Amp Stability
+
+URLs:
+
+https://www.ti.com/video/4080254925001
+https://www.ti.com/video/6216778063001
+https://www.ti.com/lit/pdf/slypa06
+
+Why it matters:
+
+- it is very good for stability measurement intuition,
+- it connects Bode plots, phase margin, overshoot, and AC peaking,
+- it discusses open-loop SPICE simulation and common stability mistakes.
+
+What I should learn from it:
+
+- how to read phase margin from loop gain,
+- how overshoot maps back to phase margin,
+- why bench setup errors cause fake stability conclusions,
+- how to think about capacitive loads and compensation in simulation.
+
+### Resource 5: Open-Source Tool Documentation
+
+Useful official pages:
+
+- xschem: https://github.com/StefanSchippers/xschem
+- ngspice: https://ngspice.sourceforge.io/index.html
+- SKY130 docs: https://skywater-pdk.readthedocs.io/en/main/
+- Magic docs: https://magicvlsi.wordpress.com/documentation/
+- KLayout docs: https://www.klayout.de/doc/
+
+Why these matter:
+
+- they tell me what the tools actually do,
+- they help me choose a realistic flow,
+- they stop me from treating software setup as an afterthought.
+
+## Core Learning Modules
+
+Each module below answers four questions:
+
+- what I must learn,
+- which resource teaches it best,
+- what I do after watching,
+- how I prove that I learned it.
+
+### Module 1: Feedback And Op-Amp Intuition
+
+What I must learn:
+
+- open-loop versus closed-loop behavior,
+- why high gain alone is not enough,
+- why finite gain and finite bandwidth matter,
+- why feedback both helps and creates stability concerns.
+
+Best resources:
+
+- Razavi op-amp intuition lectures,
+- NPTEL Analog Electronic Circuits feedback weeks,
+- TI phase margin introduction.
+
+What I do right after watching:
+
+- write one page: "Why feedback makes an op-amp useful",
+- simulate inverting and non-inverting ideal-op-amp examples,
+- show what changes when finite GBW is added,
+- connect closed-loop overshoot to insufficient phase margin.
+
+How I prove I learned it:
+
+- I can explain why a closed-loop unity-gain follower can ring even when the op-amp has very high DC gain.
+
+### Module 2: MOS Small-Signal Behavior And Biasing
+
+What I must learn:
 
 - `gm`,
 - `ro`,
-- node capacitances,
+- overdrive,
 - current mirrors,
-- overdrive voltage,
-- saturation constraints.
+- saturation constraints,
+- body effect,
+- how current and length change gain and bandwidth.
 
-Without this layer, transistor sizing becomes blind tuning.
+Best resources:
 
-### Layer 3: Two-Stage Architecture
+- NPTEL Analog Electronic Circuits Weeks 2 to 7,
+- NPTEL Analog IC Design MOSFET, current mirror, active load, and one-stage op-amp material,
+- Razavi MOS and basic amplifier chapters.
 
-Must understand:
+What I do right after watching:
 
-- what the first stage does,
-- what the second stage does,
-- where the high-impedance nodes are,
-- which node becomes dominant after compensation,
-- why the second stage adds a pole.
+- derive `gm` and `ro` relations used in first-pass sizing,
+- simulate one common-source stage,
+- simulate one current mirror,
+- write what improves when current is increased and what gets worse.
 
-### Layer 4: Miller Compensation
+How I prove I learned it:
 
-Must understand:
+- I can predict, before simulation, whether a size or current change should increase gain, speed, or headroom.
 
-- where `Cc` is connected,
-- what pole splitting means physically,
-- how the compensation capacitor shapes the loop,
+### Module 3: Differential Pair And Active Load
+
+What I must learn:
+
+- differential-to-single-ended conversion,
+- transconductance from the pair,
+- common-mode behavior,
+- active-load impact on gain,
+- tail current role.
+
+Best resources:
+
+- NPTEL Analog Electronic Circuits Week 8,
+- NPTEL Analog IC Design differential amplifier lectures,
+- Razavi differential pair and current mirror material.
+
+What I do right after watching:
+
+- build a differential pair with active load,
+- run small differential stimulus,
+- observe gain,
+- sweep common-mode input,
+- identify where the pair stops behaving correctly.
+
+How I prove I learned it:
+
+- I can point to which devices set gain, which devices set headroom, and which node becomes high impedance.
+
+### Module 4: Frequency Response, Poles, Zeros, And Phase Margin
+
+What I must learn:
+
+- how poles and zeros shape Bode plots,
+- why gain crossover matters,
+- what phase margin means physically,
+- why overshoot and ringing correlate with phase margin,
+- why rate of closure can warn about stability risk.
+
+Best resources:
+
+- NPTEL Analog Electronic Circuits Week 10,
+- NPTEL Analog IC Design negative feedback and phase margin lectures,
+- TI phase margin video and compensation PDF.
+
+What I do right after watching:
+
+- draw Bode plots by hand for one-pole and two-pole systems,
+- simulate a closed-loop amplifier with different phase margins,
+- compare overshoot, AC peaking, and loop-gain phase margin,
+- write one page on why AC and transient must agree.
+
+How I prove I learned it:
+
+- I can look at overshoot or AC peaking and give a reasonable phase-margin estimate directionally.
+
+### Module 5: One-Stage Op-Amp As A Precursor
+
+What I must learn:
+
+- why one-stage op-amps are useful,
+- why cascodes improve gain,
+- why telescopic and folded cascodes differ,
+- when one-stage is enough and when it is not.
+
+Best resources:
+
+- NPTEL Analog IC Design one-stage op-amp lectures,
+- NPTEL op-amp summary PDF,
+- Razavi one-stage op-amp sections.
+
+What I do right after watching:
+
+- study at least one simple one-stage op-amp,
+- compare telescopic and folded in notes,
+- write why telescopic is faster and why folded gives more swing,
+- decide which one is worth using only as a learning precursor.
+
+How I prove I learned it:
+
+- I can explain why the final project is not stopping at a one-stage op-amp.
+
+### Module 6: Two-Stage Op-Amp And Miller Compensation
+
+What I must learn:
+
+- why a second stage is added,
+- why the second stage adds another pole,
+- what the Miller capacitor does,
 - where the RHP zero comes from,
-- when a series resistor `Rc` is useful.
+- when a series resistor helps,
+- how `Cc`, `gm1`, `gm2`, and `CL` interact.
 
-### Layer 5: Verification Method
+Best resources:
 
-Must understand:
+- NPTEL Analog Electronic Circuits Week 11,
+- NPTEL Analog IC Design lectures on dominant-pole compensation and two-stage Miller compensated op-amps,
+- TI stability resources,
+- Razavi compensation material.
 
-- how to measure loop gain correctly,
+What I do right after watching:
+
+- draw the two-stage architecture and label the nodes,
+- derive `gm1 ~= 2*pi*UGB*Cc`,
+- derive `SR ~= I/Cc`,
+- explain in writing why increasing `Cc` helps phase margin but hurts speed,
+- build the first transistor-level two-stage schematic.
+
+How I prove I learned it:
+
+- I can explain the final compensation capacitor choice in terms of poles, zeros, bandwidth, and slew rate, not just "simulation worked."
+
+### Module 7: Verification Method And Measurement Correctness
+
+What I must learn:
+
+- how to measure loop gain,
 - how to preserve DC bias while breaking the loop,
-- how to cross-check AC phase margin with transient ringing,
-- how to extract slew rate, gain, `UGB`, and swing consistently.
+- how to compare loop gain, closed-loop step response, slew rate, and swing,
+- why a wrong bench can produce fake phase margin.
 
-### Layer 6: Optional Physical Design
+Best resources:
 
-Must understand:
+- TI Precision Labs phase margin and SPICE-stability resources,
+- NPTEL Analog IC Design loop-gain and phase-margin lectures.
 
-- why parasitics move poles,
-- why routing symmetry matters,
-- why layout can degrade gain, phase margin, and settling.
+What I do right after watching:
 
-## Reading And Video Stack
+- document one correct loop-break method,
+- run AC and transient on the same load condition,
+- write a short note when the results disagree,
+- refuse to tune the circuit until the bench setup is trusted.
 
-Use a short, deliberate stack rather than too many resources.
+How I prove I learned it:
 
-### Primary Structured Sources
+- I can explain exactly how phase margin was measured in my project.
 
-- NPTEL Analog IC Design course
-- NPTEL Analog Electronic Circuits course
-- Razavi lecture sequence on op-amps, feedback, stability, and nonidealities
+### Module 8: Trade-Offs, Reporting, And Optional Layout
 
-### Practical Stability Sources
+What I must learn:
 
-- TI Precision Labs material on Bode plots and phase margin
-- a compact gain/phase margin explainer for sanity checks
+- how to tell a gain-bandwidth-stability-power story,
+- how to compare theory versus simulation honestly,
+- why layout and parasitics matter even for a learning project.
 
-### Design-Oriented Sizing Sources
+Best resources:
 
-- P. E. Allen style two-stage op-amp design flow
-- compensation notes that explicitly discuss `Cc`, `SR`, `gm1`, and `Rc`
+- NPTEL Analog IC Design layout and mismatch topics,
+- SKY130, Magic, KLayout, and Netgen documentation if layout is attempted.
 
-### Use Of Resources
+What I do right after watching:
 
-Do not watch everything at once.
+- run `Cc`, `CL`, and current sweeps,
+- summarize what improved and what degraded,
+- if layout is in scope, lay out only the most educational core pieces,
+- rerun the main AC and transient benches post-layout.
 
-Use resources in this order:
+How I prove I learned it:
 
-1. feedback and phase margin,
-2. two-stage architecture,
-3. Miller compensation and zero behavior,
-4. swing and nonidealities,
-5. sizing and simulation.
+- I can explain one major trade-off clearly in the final report.
 
-## Curated Lecture Stack
+## Recommended Learning-To-Design Sequence
 
-These are good anchors for the learning path already started in this project.
+Do not jump straight to the final op-amp.
 
-### Op-Amp Intuition And Feedback
+Use this exact circuit sequence:
 
-- Razavi Basic Circuits Lec 38: Introduction to Op Amps
-- Razavi Electronics 1 Lec 42: Op Amp Circuits 1
-- Razavi Electronics 1 Lec 43: Op Amp Circuits II
+1. ideal op-amp feedback examples,
+2. common-source amplifier,
+3. current mirror,
+4. differential pair with active load,
+5. one-stage op-amp or one-stage precursor study,
+6. final two-stage Miller-compensated op-amp,
+7. compensation sweeps,
+8. optional layout and post-layout.
 
-### Stability And Compensation
+This order matters because each circuit teaches the next one.
 
-- Nyquist Criterion; Phase Margin
-- Razavi: Stability and Frequency Compensation Part 1
-- Razavi Electronics 2 Lec 43: Intro to Instability in Feedback
-- Razavi Electronics 2 Lec 44: Bode's Rules, Stability Condition
+## Detailed 20-Week Learning Plan
 
-### Two-Stage Architecture
+### Weeks 1 To 2: Feedback Foundation
 
-- Single Stage Op-Amp Realization
-- The Two Stage Opamp and Single Supply Operation
-- Two Stage Miller Compensated Opamp-1
-- Two Stage Miller Compensated Opamp-2
+Study:
 
-### Nonidealities And Swing Limits
+- Razavi op-amp intuition material,
+- NPTEL feedback content,
+- TI phase margin introduction.
 
-- The Two Stage Opamp (contd)
-- The Two Stage Opamp contd
-- Swing Limits of the Two Stage OTA
-- Two and Three Stage Miller Compensated Opamps; Feedforward Compensated Opamp
-- Razavi Electronics 1 Lec 45: Op Amp Nonidealities II
+Learn:
 
-## Tooling Paths
+- open-loop versus closed-loop,
+- finite bandwidth,
+- overshoot, ringing, and phase margin.
 
-The project is credible only if the measurement method is credible.
+Do:
 
-### If Cadence Is Available
+- simulate ideal-op-amp inverting and non-inverting amplifiers,
+- simulate a finite-GBW op-amp follower,
+- write one page on why feedback is the real story.
 
-Recommended flow:
+Output:
 
-- schematic capture,
-- operating-point and AC analyses,
-- STB or loop-gain style analysis,
-- transient tests,
-- optional layout and extraction.
+- feedback note,
+- first Bode plot,
+- first overshoot example.
 
-Key rule:
+### Weeks 3 To 4: MOS Basics, Biasing, And Single Stages
 
-- if using loop stability analysis, break the loop in a way that preserves DC bias and actually breaks all relevant paths.
+Study:
 
-### If Commercial EDA Is Not Available
+- MOS amplifier and biasing material from NPTEL and Razavi.
 
-A strong student project can still be done with:
+Learn:
 
-- SKY130 or another open PDK,
-- xschem for schematic entry,
-- ngspice for simulation,
-- Magic or KLayout for layout verification if layout is in scope.
+- `gm`,
+- `ro`,
+- overdrive,
+- current mirrors,
+- gain and swing basics.
 
-### Measurement Correctness Checklist
+Do:
 
-Before trusting any phase margin number, confirm:
+- simulate a common-source amplifier,
+- simulate a current mirror,
+- estimate gain before simulation,
+- compare hand estimate and SPICE.
 
-- which loop is being measured,
-- where the loop is broken,
-- whether DC bias is preserved,
-- whether all feedback paths are interrupted,
-- whether AC and transient interpretations agree.
+Output:
 
-If AC says high phase margin but the unity-gain transient rings badly, assume the measurement setup is wrong until proven otherwise.
+- small-signal note,
+- current mirror note,
+- discrepancy log v1.
 
-## Project Phases
+### Weeks 5 To 6: Differential Pair And Active Load
 
-Use the project in phases rather than one long open-ended loop.
+Study:
 
-## Phase 1: Environment And Measurement Correctness
+- differential amplifier material from NPTEL Analog Electronic Circuits and Analog IC Design.
 
-Goal:
+Learn:
 
-- remove tool and testbench uncertainty before circuit complexity is added.
+- differential gain,
+- common-mode behavior,
+- active-load gain increase,
+- high-impedance node intuition.
 
-Tasks:
+Do:
 
-- create project folders for notes, sizing sheets, schematics, simulations, plots, and report assets,
-- run a simple DC and AC check on a known amplifier block,
-- define the loop-gain extraction method,
-- write a short note on how phase margin will be measured.
+- build and simulate a differential pair,
+- test differential excitation,
+- test common-mode input change,
+- note where the pair loses proper biasing.
 
-Outputs:
+Output:
 
-- project folder structure,
-- first successful DC and AC simulation,
-- loop-gain method note,
-- file naming convention for plots and benches.
+- differential pair schematic,
+- gain note,
+- common-mode note.
 
-## Phase 2: Spec Freeze And Architecture Justification
+### Weeks 7 To 8: Frequency Response And Stability Basics
 
-Goal:
+Study:
 
-- choose a target that is ambitious enough to be meaningful but simple enough to finish.
+- NPTEL stability lectures,
+- TI phase margin material.
 
-Recommended learning-oriented starting point:
+Learn:
 
-- `CL` in the pF range,
-- `UGB` in the MHz range,
-- phase margin around `60 deg`,
-- swing and slew targets consistent with the supply and current budget.
+- dominant pole,
+- non-dominant poles,
+- loop gain,
+- phase margin,
+- overshoot relation.
 
-Tasks:
+Do:
 
-- fill the spec template,
-- justify why a two-stage Miller-compensated op-amp is the right topology,
-- write a one-paragraph explanation of why a second stage helps and why it creates a compensation problem.
+- draw one-pole and two-pole Bode plots by hand,
+- simulate closed-loop systems with different phase margins,
+- create one page mapping overshoot to phase margin.
 
-Outputs:
+Output:
 
-- frozen spec table v1,
-- architecture decision note,
-- assumptions list.
-
-## Phase 3: Stability Fundamentals Lock-In
-
-Goal:
-
-- make phase margin predictive rather than descriptive.
-
-Tasks:
-
-- sketch expected Bode magnitude and phase shapes,
-- explain how poles and zeros change those shapes,
-- connect crossover frequency to phase margin,
-- write a short note on why a two-stage loop needs compensation.
-
-Outputs:
-
-- hand-drawn Bode sketches,
 - stability summary note,
-- first estimate of dominant and non-dominant pole roles.
+- Bode sketch sheet,
+- AC versus transient comparison note.
 
-## Phase 4: First-Pass Hand Design
+### Weeks 9 To 10: One-Stage Op-Amp Study
 
-Goal:
+Study:
 
-- produce a first transistor-level design that has a reasonable chance of converging.
+- NPTEL one-stage op-amp lectures,
+- NPTEL op-amp summary for telescopic and folded cascode comparison.
 
-### Recommended First-Pass Sizing Rules
+Learn:
 
-Use simple, defensible starting rules.
+- what a single-stage op-amp can do well,
+- where swing gets limited,
+- why telescopic and folded trade off speed, swing, and noise.
 
-- choose `Cc` relative to `CL`, for example a baseline such as `Cc >= 0.2*CL`
-- use slew rate to back-calculate a required charging current: `I >= SR*Cc`
-- use target `UGB` and `Cc` to estimate `gm1`: `gm1 ~ 2*pi*UGB*Cc`
-- allocate enough second-stage transconductance and output resistance to support gain and output-pole placement
-- if using a nulling resistor, document whether it is for RHP-zero removal or LHP-zero placement
+Do:
 
-### Critical Schematic Decisions To Document
+- compare architectures in notes,
+- decide whether the first stage of the final two-stage op-amp should conceptually resemble a simple differential pair, telescopic, or folded precursor.
 
-- where `Cc` is connected,
-- which node is the first-stage high-impedance node,
-- which node is the output node,
-- how bias currents are generated,
-- whether `Rc` is present,
-- what the assumed `Vov` values are for key devices.
+Output:
 
-Outputs:
+- architecture comparison note,
+- chosen first-stage learning direction.
+
+### Weeks 11 To 12: Final Two-Stage Architecture And First-Pass Sizing
+
+Study:
+
+- NPTEL two-stage Miller-compensated op-amp lectures,
+- Razavi compensation material.
+
+Learn:
+
+- first-stage role,
+- second-stage role,
+- Miller capacitor role,
+- `Cc`, `gm1`, `SR`, and `CL` relations.
+
+Do:
+
+- freeze provisional specs,
+- choose first-pass `Cc`,
+- compute `gm1`,
+- compute current from slew-rate target,
+- draw the full architecture with labeled nodes.
+
+Output:
 
 - sizing sheet v1,
-- node-labeled architecture diagram,
-- transistor-level schematic v0.
+- architecture diagram,
+- provisional spec note.
 
-## Phase 5: First Verification Pass
+### Weeks 13 To 14: Schematic And DC Bring-Up
 
-Goal:
+Learn:
 
-- prove that the first-pass sizing is at least directionally correct.
+- how transistor-level reality differs from hand estimates.
 
-Tasks:
+Do:
 
+- enter the transistor-level schematic,
 - run DC operating point,
-- verify all critical transistors are in the intended region,
-- run loop gain / open-loop AC,
-- extract DC gain and `UGB`,
-- run a unity-gain closed-loop step response,
-- compare ringing to phase margin.
+- verify region of operation,
+- correct current and headroom issues before any serious AC work.
 
-Outputs:
-
-- operating-point table,
-- first gain/phase plot,
-- first step response plot,
-- first discrepancy note between expectation and result.
-
-## Phase 6: Compensation And Trade-Off Exploration
-
-Goal:
-
-- turn the op-amp from a schematic into a measured trade-off system.
-
-Minimum sweeps to run:
-
-- sweep `Cc`,
-- sweep second-stage bias current,
-- sweep `CL`,
-- add and remove `Rc`,
-- vary `Rc` if used.
-
-For each sweep, explain:
-
-- what improved,
-- what degraded,
-- why the trend follows the equations.
-
-Outputs:
-
-- trade-off plot set,
-- design decision memo for final `Cc`,
-- design decision memo for `Rc`,
-- updated schematic v1.
-
-## Phase 7: Final Verification Suite
-
-Goal:
-
-- generate the evidence that will appear in the report and viva.
-
-Tasks:
-
-- final loop-gain measurement,
-- final unity-gain transient,
-- final slew-rate measurement,
-- output swing check,
-- load-capacitance sweep,
-- supply sensitivity check,
-- optional noise and offset work if in scope,
-- optional corner analysis if models support it.
-
-Outputs:
-
-- final measured spec table,
-- pass/fail table against targets,
-- final calculation-versus-simulation note.
-
-## Phase 8: Optional Layout And Post-Layout Closure
-
-Goal:
-
-- prove awareness that analog design does not end at the schematic.
-
-Minimal high-value layout scope:
-
-- input pair,
-- current mirrors,
-- second stage,
-- compensation network,
-- bias core.
-
-Tasks:
-
-- create layout of the core analog block,
-- run DRC and LVS,
-- extract parasitics,
-- rerun gain, `UGB`, phase margin, and step response.
-
-Outputs:
-
-- DRC-clean evidence,
-- LVS-clean evidence,
-- post-layout AC and transient comparison,
-- post-layout delta note.
-
-## Required Simulation Matrix
-
-The project should not be considered finished unless every relevant row below has an output.
-
-| Test | Why It Matters | Minimum Output |
-| --- | --- | --- |
-| DC operating point | verifies currents, regions, headroom | node voltages and branch currents |
-| Loop gain / open-loop AC | gives DC gain, `UGB`, and phase margin | gain-phase plot and extracted values |
-| Unity-gain closed-loop step | cross-checks stability in time domain | transient plot and ringing comment |
-| Slew rate | verifies large-signal speed | rising and falling SR values |
-| Output swing | checks headroom and stage saturation | swing range result |
-| `CL` sweep | exposes load sensitivity | plot of PM or step response versus `CL` |
-| `Cc` sweep | shows compensation trade-off | PM, `UGB`, SR trends |
-| Bias current sweep | shows power-speed trade-off | gain / speed / power comparison |
-| `Rc` sweep | shows zero control | phase trend and zero-mitigation comment |
-| Supply sweep | checks operating robustness | gain or swing sensitivity versus `VDD` |
-| Noise | optional but useful | output noise result |
-| Offset / mismatch | optional advanced extension | MC histogram or offset estimate |
-| Corners | optional if model support exists | worst-case table |
-
-## Measurement And Extraction Rules
-
-Consistency matters more than having many plots.
-
-### DC Gain
-
-Report:
-
-- low-frequency gain,
-- units in dB,
-- exact setup used.
-
-### Unity-Gain Bandwidth
-
-Report:
-
-- crossover frequency,
-- whether it was obtained from loop gain or closed-loop gain,
-- phase at the same crossing.
-
-### Phase Margin
-
-Report:
-
-- the phase margin number,
-- the exact loop-break method,
-- one sentence cross-checking the transient response.
-
-### Slew Rate
-
-Report:
-
-- rising and falling slew rates separately,
-- input step size used,
-- whether the amplifier is in unity gain during the test.
-
-### Output Swing
-
-Report:
-
-- linear output range,
-- supply conditions,
-- load condition.
-
-## First-Pass Design Worksheet
-
-This worksheet should exist as a real spreadsheet or notebook page.
-
-### Inputs
-
-- `VDD`
-- target `CL`
-- target `UGB`
-- target phase margin
-- target slew rate
-- target DC gain
-- target power
-
-### Derived Starting Quantities
-
-- choose `Cc`
-- compute required current from `SR*Cc`
-- compute required `gm1` from `2*pi*UGB*Cc`
-- estimate first-stage gain
-- estimate second-stage gain
-- estimate total gain
-- estimate dominant-pole and non-dominant-pole tendencies
-- estimate whether `Rc` is necessary
-
-### Device-Level Choices To Record
-
-- device lengths selected for gain,
-- overdrive voltages selected for swing and efficiency,
-- first-stage and second-stage current allocation,
-- expected `gm`, `ro`, and node capacitances,
-- expected output resistance at the output node.
-
-## Trade-Off Story That Must Be Demonstrated
-
-The final report should explicitly show at least these three trends.
-
-### `Cc` Sweep
-
-Expected trend:
-
-- larger `Cc` -> higher phase margin
-- larger `Cc` -> lower `UGB`
-- larger `Cc` -> lower slew rate
-
-This is one of the main equations-to-plots stories in the project.
-
-### Second-Stage Bias Current Sweep
-
-Expected trend:
-
-- larger second-stage current -> potentially better speed and drive
-- larger second-stage current -> higher power
-- pole locations and zero behavior can shift
-
-### `Rc` Inclusion Or Sweep
-
-Expected trend:
-
-- correct `Rc` can mitigate the RHP-zero penalty
-- phase response should improve if the zero was previously harmful
-
-If adding `Rc` changes very little, explain whether the zero was already far away or whether the setup is not measuring the effect properly.
-
-## Common Failure Modes And Diagnosis Map
-
-Use this as the debug checklist before changing device sizes blindly.
-
-### Phase Margin Looks Wrong
-
-Possible causes:
-
-- loop broken at the wrong place,
-- DC bias disturbed by the test method,
-- the measured loop is not the actual feedback loop,
-- `Cc` too small,
-- `CL` too large,
-- RHP zero too close to crossover.
-
-What to check first:
-
-- loop-break correctness,
-- AC versus transient consistency,
-- `Cc`,
-- effect of adding or tuning `Rc`.
-
-### Phase Margin Looks Fine But Transient Rings Too Much
-
-Possible causes:
-
-- wrong loop measured,
-- closed-loop bench differs from AC bench conditions,
-- load in transient is not the same as load in AC,
-- extra poles not captured by the chosen measurement method.
-
-### Slew Rate Is Lower Than Expected
-
-Possible causes:
-
-- bias current lower than intended,
-- `Cc` too large,
-- devices not biased in the expected region,
-- large-signal current limited by internal mirrors or second stage.
-
-Check against:
-
-- `SR ~ I/Cc`
-
-### Gain Is Good But Swing Is Poor
-
-Possible causes:
-
-- headroom constraint,
-- excessive overdrive,
-- second-stage saturation,
-- current-source saturation limits.
-
-This is a DC headroom problem first, not a compensation problem.
-
-### Stable At Small `CL` But Unstable At Larger `CL`
-
-Possible causes:
-
-- output pole moved down too much,
-- `Cc` too small for the load,
-- `CL` is now comparable to the compensation capacitor,
-- compensation was chosen for the wrong load.
-
-This is why `CL` sweep is mandatory.
-
-### Calculation And Simulation Disagree Strongly
-
-Possible causes:
-
-- parasitic capacitances ignored in the hand estimate,
-- `ro` overestimated,
-- real device `gm/Id` or region assumptions were wrong,
-- testbench or measurement setup not equivalent to the assumed model.
-
-Required action:
-
-- write the discrepancy down,
-- explain the likely missing effect,
-- do not hide the mismatch.
-
-## Layout Awareness Checklist
-
-Even if layout is optional, note what would matter physically.
-
-- keep the input pair well matched,
-- keep current mirrors symmetrical,
-- minimize parasitic at the first-stage high-impedance node,
-- route the compensation path deliberately,
-- avoid accidental coupling into the compensation node,
-- keep output routing realistic for the assumed load,
-- expect parasitics to reduce phase margin and shift `UGB`.
-
-## Signoff Checklist
-
-Before the project is called complete, confirm:
-
-- spec table frozen,
-- architecture justified,
-- `Cc` choice justified,
-- `Rc` decision justified,
-- sizing sheet completed,
-- loop-gain method documented,
-- DC operating point verified,
-- gain / `UGB` / phase margin extracted,
-- transient step response verified,
-- slew rate measured,
-- output swing measured,
-- `CL` sweep completed,
-- `Cc` sweep completed,
-- bias sweep completed,
-- discrepancy log written,
-- optional layout results added if layout is in scope.
-
-## Detailed 26-Week Execution Plan
-
-This is the recommended deep version of the project schedule.
-
-### Weeks 1 To 4: Foundations And Spec Freeze
-
-#### Week 1
-
-Objective:
-
-- set up folders, naming scheme, and simulation environment.
-
-Outputs:
-
-- project folder structure,
-- tool-flow note,
-- first DC and AC sanity simulation.
-
-#### Week 2
-
-Objective:
-
-- study op-amp feedback intuition and closed-loop thinking.
-
-Outputs:
-
-- one-page open-loop versus closed-loop note,
-- ideal-versus-real assumption table,
-- short note on why high gain alone is not enough.
-
-#### Week 3
-
-Objective:
-
-- study poles, zeros, phase margin, and compensation.
-
-Outputs:
-
-- hand Bode sketch,
-- dominant versus non-dominant pole note,
-- phase-margin interpretation sheet.
-
-#### Week 4
-
-Objective:
-
-- freeze provisional specs and justify the two-stage architecture.
-
-Outputs:
-
-- spec table v1,
-- topology justification paragraph,
-- list of assumed load and supply conditions.
-
-### Weeks 5 To 8: Architecture And First-Pass Sizing
-
-#### Week 5
-
-Objective:
-
-- understand first-stage and second-stage roles,
-- assign qualitative responsibilities to each stage.
-
-Outputs:
-
-- node-labeled architecture sketch,
-- current allocation note,
-- first list of target `gm` and `ro` values.
-
-#### Week 6
-
-Objective:
-
-- choose `Cc` and derive first-pass current and `gm1`.
-
-Outputs:
-
-- compensation sheet,
-- `SR` to current estimate,
-- `UGB` to `gm1` estimate.
-
-#### Week 7
-
-Objective:
-
-- build hand calculations for stage gains and expected total gain.
-
-Outputs:
-
-- gain calculation sheet,
-- headroom assumptions sheet,
-- `Vov` targets for critical transistors.
-
-#### Week 8
-
-Objective:
-
-- enter transistor-level schematic v0.
-
-Outputs:
+Output:
 
 - schematic v0,
-- labeled nodes for AC and transient probing,
-- first DC operating-point report.
+- operating-point table,
+- bias-debug note.
 
-### Weeks 9 To 12: First Verification Pass
+### Weeks 15 To 16: Loop Gain, Step Response, Slew Rate, Swing
 
-#### Week 9
+Learn:
 
-Objective:
+- how to verify the actual circuit correctly.
 
-- verify operating region and bias currents.
+Do:
 
-Outputs:
+- build the loop-gain bench,
+- extract gain, `UGB`, and phase margin,
+- run unity-gain closed-loop step,
+- run slew-rate test,
+- run swing test,
+- compare all results back to theory.
 
-- branch-current table,
-- node-voltage table,
-- note on any saturation failures.
+Output:
 
-#### Week 10
+- gain/phase plot,
+- step response,
+- slew-rate plot,
+- swing note.
 
-Objective:
+### Weeks 17 To 18: Compensation And Trade-Off Exploration
 
-- build and validate the loop-gain measurement setup.
+Learn:
 
-Outputs:
+- how compensation choices reshape the full design.
 
-- loop-break method note,
-- first gain/phase plot,
-- extracted DC gain and `UGB`.
+Do:
 
-#### Week 11
+- sweep `Cc`,
+- sweep `CL`,
+- evaluate `Rc`,
+- sweep second-stage current,
+- explain every trend in words.
 
-Objective:
+Output:
 
-- measure phase margin and cross-check with unity-gain transient.
+- compensation plot set,
+- final `Cc` decision note,
+- optional `Rc` decision note.
 
-Outputs:
+### Weeks 19 To 20: Final Story, Optional Layout, And Viva Prep
 
-- phase-margin result,
-- unity-gain step response,
-- AC-versus-transient consistency note.
+Learn:
 
-#### Week 12
+- how to present the design as a coherent engineering story.
 
-Objective:
+Do:
 
-- measure slew rate and output swing.
+- assemble final result set,
+- write theory-versus-simulation summary,
+- optionally do a compact layout study,
+- prepare viva answers.
 
-Outputs:
+Output:
 
-- SR rising and falling results,
-- output swing result,
-- note on which devices limit swing.
+- final plot package,
+- final summary note,
+- viva sheet,
+- optional layout note.
 
-### Weeks 13 To 16: Trade-Off Sweeps And Refinement
+## What I Should Produce After Every Resource Block
 
-#### Week 13
+After any major lecture block, I should produce exactly these four things:
 
-Objective:
+- one concept note,
+- one derivation or equation sheet,
+- one small simulation,
+- one confusion log entry.
 
-- sweep `Cc`.
+This rule prevents passive accumulation of videos without understanding.
 
-Outputs:
+## Core Equations That Must Keep Reappearing
 
-- `Cc` versus PM/UGB/SR plot set,
-- selected `Cc` rationale,
-- note on compensation trade-off.
+These equations must repeatedly appear in my notes, sizing sheets, and report:
 
-#### Week 14
+- `Av0 ~ (gm1*ro1)*(gm2*ro2)`
+- `gm1 ~ 2*pi*UGB*Cc`
+- `SR ~ I/Cc`
+- uncompensated RHP zero `~ gm2/Cc`
+- larger `Cc` usually improves phase margin but lowers `UGB` and slew rate
+- larger current usually improves speed but raises power
+- larger `CL` usually makes stability harder
 
-Objective:
+## Final Deliverables For A Learning-Centric Version
 
-- sweep load capacitance `CL`.
+The final project should include:
 
-Outputs:
-
-- stability-versus-load plot,
-- maximum safe `CL` note,
-- explanation of output-pole movement.
-
-#### Week 15
-
-Objective:
-
-- evaluate `Rc` use and zero management.
-
-Outputs:
-
-- with/without `Rc` comparison,
-- `Rc` sweep if used,
-- note on RHP-zero mitigation.
-
-#### Week 16
-
-Objective:
-
-- sweep second-stage current or key bias currents.
-
-Outputs:
-
-- power versus speed trade-off plot,
-- updated schematic v1,
-- current allocation decision note.
-
-### Weeks 17 To 20: Final Verification Package
-
-#### Week 17
-
-Objective:
-
-- rerun gain, `UGB`, and phase margin on the refined design.
-
-Outputs:
-
-- final AC plot,
-- final extracted gain / `UGB` / PM table,
-- comparison against targets.
-
-#### Week 18
-
-Objective:
-
-- rerun transient, slew, and swing on the refined design.
-
-Outputs:
-
-- final step response,
-- final slew-rate plot,
-- final swing result.
-
-#### Week 19
-
-Objective:
-
-- run supply sweep and optional common-mode sweep.
-
-Outputs:
-
-- supply robustness note,
-- optional ICMR plot,
-- note on remaining weak points.
-
-#### Week 20
-
-Objective:
-
-- run optional noise, mismatch, or corner checks if models and time support it.
-
-Outputs:
-
-- optional noise result,
-- optional offset / mismatch note,
-- optional worst-case table.
-
-### Weeks 21 To 24: Optional Layout And Physical Awareness
-
-#### Week 21
-
-Objective:
-
-- create a compact layout plan for the analog core.
-
-Outputs:
-
-- block floorplan sketch,
-- matching note for input pair and mirrors,
-- parasitic-risk checklist.
-
-#### Week 22
-
-Objective:
-
-- complete core placement and critical routing.
-
-Outputs:
-
-- layout screenshot,
-- routing note around the compensation node,
-- DRC progress log.
-
-#### Week 23
-
-Objective:
-
-- finish DRC and run LVS.
-
-Outputs:
-
-- DRC-clean report,
-- LVS-clean report,
-- note on any extracted parasitic concern.
-
-#### Week 24
-
-Objective:
-
-- run post-layout AC and transient comparison.
-
-Outputs:
-
-- pre-layout versus post-layout comparison plots,
-- delta note for gain / `UGB` / PM,
-- delta note for step response.
-
-### Weeks 25 To 26: Reporting And Viva Preparation
-
-#### Week 25
-
-Objective:
-
-- draft report sections and clean all final figures.
-
-Outputs:
-
-- intro and theory section draft,
-- design methodology draft,
-- final cleaned plots.
-
-#### Week 26
-
-Objective:
-
-- finalize the project package and viva summary.
-
-Outputs:
-
-- final report package,
-- one-page viva sheet,
-- final measured spec table,
-- short "what improved / what got worse / why" summary.
-
-## Required Final Deliverables
-
-By the end of the project, assemble:
-
-- frozen spec table,
-- architecture justification note,
-- stability measurement method note,
-- hand calculation sheets for gain, `UGB`, `Cc`, and `SR`,
-- complete schematic,
-- node-labeled architecture diagram,
-- gain and phase plots,
-- unity-gain step response plots,
-- slew-rate plots,
-- swing result,
-- `Cc` sweep results,
-- `CL` sweep results,
-- bias sweep results,
-- discrepancy log comparing theory and simulation,
-- optional DRC/LVS/post-layout evidence,
-- final viva summary sheet.
-
-## Good Questions To Be Ready For In The Viva
-
-- Why was a two-stage op-amp chosen instead of a single-stage op-amp?
-- Why does adding a second stage create a stability problem?
-- What exactly does Miller compensation do?
-- What sets the unity-gain bandwidth?
-- Why does increasing `Cc` improve phase margin but hurt speed?
-- Why can an RHP zero reduce phase margin?
-- Why might a series resistor with `Cc` help?
-- Why does slew rate scale with available current and `Cc`?
-- Why can an amplifier have good gain but poor output swing?
-- Why does larger `CL` often degrade stability?
-- How did your hand calculations compare with simulation?
-- What would you change first if the phase margin were too low?
-
-## Primary Reference Package
-
-At minimum, the report and notes should cite or rely on:
-
-- NPTEL Analog IC Design material for sequence and transistor-level perspective,
-- NPTEL Analog Electronic Circuits material for op-amp background,
-- Razavi lectures for intuition and stability examples,
-- TI stability material for Bode and phase-margin interpretation,
-- a design-oriented two-stage sizing flow such as Allen-style lecture notes,
-- a documented loop-gain method for the chosen simulator,
-- open PDK / open-tool documentation if the project uses SKY130, xschem, ngspice, Magic, or KLayout.
-
-## Resume Line
-
-Designed and verified a Miller-compensated two-stage CMOS op-amp with transistor-level sizing, loop-stability analysis, compensation trade-off exploration, and simulation-based validation of gain, unity-gain bandwidth, phase margin, slew rate, output swing, and load sensitivity.
+- a learning log,
+- a resource-to-concept map,
+- concept notes for feedback, differential pair, stability, and compensation,
+- a first-pass sizing sheet,
+- the final schematic,
+- the loop-gain method note,
+- gain, `UGB`, phase margin, slew rate, swing, and load plots,
+- at least one trade-off sweep set,
+- one theory-versus-simulation discrepancy note,
+- optional layout and post-layout comparison if scope and tools allow.
+
+## Questions I Must Be Ready To Answer
+
+- Why is a two-stage op-amp better than a single-stage op-amp for this project?
+- Why does a second stage create a stability problem?
+- What exactly does the Miller capacitor do?
+- Why does increasing `Cc` usually help phase margin but hurt speed?
+- What sets `UGB` in a first-pass design?
+- Why can slew rate be estimated from `I/Cc`?
+- When is `Rc` useful?
+- Why might AC and transient give conflicting conclusions?
+- Why would I choose nMOS or pMOS input devices?
+- Why was this software flow chosen instead of another one?
