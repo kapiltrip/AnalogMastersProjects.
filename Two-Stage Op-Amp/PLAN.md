@@ -1,65 +1,228 @@
-# Learning-Centric Master's Plan: Miller-Compensated Two-Stage CMOS Op-Amp
+# Two-Stage CMOS Op-Amp Plan
 
-## 5-Week Learning Plan
+## Project Goal
 
-### Week 1: Understand Feedback And Stability
+Design and analyze a Miller-compensated two-stage CMOS op-amp with gain, unity-gain bandwidth, phase margin, slew rate, output swing, and load trade-off study.
 
-- Learn: open-loop versus closed-loop behavior, loop gain, gain crossover, and phase margin.
-- Learn: why a high-gain amplifier can still behave badly in feedback.
-- Why: stability is the main reason a two-stage op-amp is interesting and worth studying carefully.
+## Working Rule
 
-### Week 2: Learn The Core Analog Blocks
+For every study block:
 
-- Learn: `gm`, `ro`, overdrive, current mirrors, and differential pair behavior.
-- Learn: how gain, headroom, and bias current affect amplifier behavior.
-- Why: these are the building blocks of the final op-amp, so they must be understood before compensation is studied in detail.
+1. Watch the lecture.
+2. Make 1-page handwritten notes.
+3. Do 1 derivation or design sheet.
+4. Do 1 simulation block.
+5. Write what failed and why.
 
-### Week 3: Learn The Two-Stage Structure
+## Suggested Folder Use
 
-- Learn: why a second stage is added, why it creates extra poles, and what Miller compensation is doing.
-- Learn: what `Cc` does, why an `RHP` zero appears, and why `Rc` may help.
-- Why: this is the main design idea behind the final circuit.
+- `notes/`: handwritten scan summaries, derivations, viva points
+- `design/`: hand calculations, sizing sheets, topology decisions
+- `simulations/`: Cadence plots, testbenches, sweeps
+- `references/`: PDFs, lecture lists, copied links
+- `report/`: report draft, slides, final summary
 
-### Week 4: Learn How The Design Becomes A Schematic
+## Week 1: Op-Amp Intuition First
 
-- Learn: how gain, `UGB`, phase margin, slew rate, and load connect to first-pass sizing.
-- Learn: how the full transistor-level schematic is built and biased.
-- Why: this is where the project moves from theory into actual design work.
+### Watch
 
-### Week 5: Learn What Makes The Op-Amp Practically Usable
+- [Razavi Basic Circuits Lec 38: Introduction to Op Amps](https://www.youtube.com/watch?v=KjQAz-U_-gk)
+- [Razavi Electronics 1, Lec 42: Op Amp Circuits 1](https://www.youtube.com/watch?v=WzdmaSUCQGM)
+- [Razavi Electronics 1, Lec 43: Op Amp Circuits II](https://www.youtube.com/watch?v=oWMBjDfRacc)
 
-- Learn: how to judge gain, `UGB`, phase margin, slew rate, swing, and load behavior together.
-- Learn: why AC and transient results must agree before the design can be trusted.
-- Why: a usable op-amp is judged by closed-loop behavior, not only by one good plot.
+### What You Gain
 
-## Software Learning Plan
+- What an op-amp is trying to do
+- Why high open-loop gain matters
+- How feedback makes the circuit useful
+- What closed-loop behavior means
 
-### Week 1: Learn The Basic Simulation Flow
+### Why It Supports The Project
 
-- Learn: how to build simple amplifier circuits in LTspice, TINA-TI, Cadence, or xschem/ngspice.
-- Learn: how to run operating-point, AC, and transient simulations.
-- Why: this is the minimum needed to study gain, poles, and time-domain behavior.
+This gives the system-level purpose of the two-stage op-amp before transistor-level design starts.
 
-### Week 2: Learn AC And Transient Checking
+### Do Next
 
-- Learn: how to generate Bode plots, phase-margin plots, and step responses.
-- Learn: how to compare overshoot and ringing against phase margin.
-- Why: stability learning is strongest when AC and transient results are checked together.
+Prepare a spec sheet with:
 
-### Week 3: Learn Full Schematic Entry
+- Supply voltage
+- Load capacitance
+- Target DC gain
+- Target UGB
+- Target phase margin
+- Output swing
+- Slew rate
+- Power budget
 
-- Learn: how to enter the full two-stage op-amp schematic and bias network in the main tool.
-- Learn: how to verify the intended operating point and device regions.
-- Why: this is where the full design becomes testable.
+Freeze the specs before opening Cadence.
 
-### Week 4: Learn Compensation And Load Sweeps
+## Week 2: Stability And Compensation
 
-- Learn: how to sweep `Cc`, `Rc`, and `CL` and compare the effect on gain, `UGB`, and phase margin.
-- Learn: how to test slew rate and output swing in transient simulation.
-- Why: compensation is understood properly only when parameter changes are tied to clear response changes.
+### Watch
 
-### Week 5: Learn Robustness And Documentation
+- [Nyquist Criterion; Phase Margin](https://www.youtube.com/watch?v=hDc4UD2iHio)
+- [NPTEL Analog IC Design Playlist](https://www.youtube.com/playlist?list=PLbMVogVj5nJRlMz5diOg9wBizaU6-egJc)
+- [Razavi: Stability and Frequency Compensation Part 1](https://www.youtube.com/watch?v=rEM0tW7FzUA)
 
-- Learn: how to compare multiple simulation runs and keep a clean design log.
-- Learn: how to summarize what changed, why it changed, and what result improved or became worse.
-- Why: this turns software use into structured analog design learning instead of random tuning.
+### Optional Add-On
+
+- [Razavi Electronics 2 Lec 43: Intro to Instability in Feedback](https://www.youtube.com/watch?v=kC8FYL8gr3E)
+- [Razavi Electronics 2 Lec 44: Bode's Rules, Stability Condition](https://www.youtube.com/watch?v=UKf4tVoULlo)
+
+### What You Gain
+
+- Why two-stage op-amps are unstable without care
+- What phase margin means
+- Why Miller compensation is used
+- How compensation trades speed for stability
+
+### Why It Supports The Project
+
+This is the core theory needed to make the design stable and to explain the loop behavior properly.
+
+### Do Next
+
+Make a one-page sheet with:
+
+- Open-loop poles
+- Pole splitting idea
+- Effect of compensation capacitor `Cc`
+- Target phase margin
+- Expected trade-off: larger `Cc` gives better stability but lower speed
+
+## Week 3: Stage-Level Understanding
+
+### Watch
+
+- [Single Stage Op-Amp Realization](https://www.youtube.com/watch?v=oSYd6sDdlnY)
+- [The Two Stage Opamp and Single Supply Operation](https://www.youtube.com/watch?v=ITYwPYcPeIA)
+
+### What You Gain
+
+- What the first stage does
+- What the second stage does
+- Why single-supply operation changes headroom limits
+- How gain and swing begin to fight each other
+
+### Why It Supports The Project
+
+You stop treating the op-amp as a black box and start understanding the role of each block.
+
+### Do Next
+
+Do a first-pass hand design:
+
+- Choose topology
+- Estimate stage gains
+- Choose rough overdrive voltages
+- Estimate current split between first and second stage
+
+## Week 4: Main Two-Stage Miller-Compensated Design
+
+### Watch
+
+- [Two Stage Miller Compensated Opamp-1](https://www.youtube.com/watch?v=sjqObvsIpOA)
+- [Two Stage Miller Compensated Opamp-2](https://www.youtube.com/watch?v=EoEx3sFvf58)
+
+### What You Gain
+
+- Standard two-stage architecture
+- How Miller compensation is inserted
+- How the dominant pole is created
+- Why a zero may appear
+- How unity-gain behavior is shaped
+
+### Why It Supports The Project
+
+This is the main circuit-design week where the project becomes a real architecture and not just theory.
+
+### Do Next
+
+Create the schematic draft and calculate:
+
+- Initial `Cc`
+- First-stage transconductance target
+- Expected UGB
+- Estimated DC gain
+- Expected load limitation
+
+Then start Cadence schematic entry.
+
+## Week 5: Limits, Alternatives, And Explanation Depth
+
+### Watch
+
+- [Two and Three Stage Miller Compensated Opamps; Feedforward Compensated Opamp](https://www.youtube.com/watch?v=obEmLZo2Kww)
+- [The Two Stage Opamp (contd)](https://www.youtube.com/watch?v=PCHsptMu12Y)
+- [The Two Stage Opamp contd](https://www.youtube.com/watch?v=rvPmI87J12o)
+- [Swing Limits of the Two Stage OTA](https://www.youtube.com/watch?v=vIZTDVzG204)
+
+### What You Gain
+
+- Why the standard two-stage op-amp is chosen
+- Where swing limits come from
+- How it compares with more advanced compensated structures
+- Which practical trade-offs define a good design
+
+### Why It Supports The Project
+
+This is the material that makes your explanation mature in viva, review, and interview settings.
+
+### Do Next
+
+Add a comparison page to the report:
+
+- Chosen architecture
+- Why it was chosen
+- Its known limits
+- What a better architecture would be if specs changed
+
+## Week 6: Simulation And Debugging
+
+### Run
+
+- DC operating point
+- Open-loop gain and phase
+- Unity-gain closed-loop test
+- Step response
+- Slew rate
+- Output swing
+- Load capacitance sweep
+- Supply sweep
+- Corner check if time permits
+
+### What You Gain
+
+You generate the actual project evidence for the final report.
+
+### Why It Supports The Project
+
+This is where theory becomes measured design data.
+
+### Typical Failure Notes
+
+- Low phase margin: increase or re-evaluate `Cc`, check non-dominant poles
+- Low gain: revisit output resistance and current levels
+- Poor slew rate: check bias current and `Cc` trade-off
+- Poor swing: check headroom, not just gain
+- Load instability: output pole moved too low
+
+## Final Deliverables
+
+- Spec table
+- Hand calculations
+- Final schematic
+- Gain and phase plot
+- Transient and slew-rate plots
+- Load sweep
+- One trade-off summary slide
+
+## Primary References
+
+- [NPTEL Analog IC Design Course](https://onlinecourses.nptel.ac.in/noc26_ee66/preview)
+- [Shanthi Pavan Analog Electronic Circuits Course Details](https://nptel.ac.in/courses/108106188)
+- [Razavi Electronics 1, Lec 45: Op Amp Nonidealities II](https://www.youtube.com/watch?v=VN8SeVA8LnU)
+
+## Resume Line
+
+Designed and analyzed a Miller-compensated two-stage CMOS op-amp; evaluated gain, UGB, phase margin, slew rate, and load-capacitance trade-offs.
