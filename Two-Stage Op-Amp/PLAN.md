@@ -115,6 +115,8 @@ I should freeze the specs before opening Cadence.
 
 - Video: `Nyquist criterion; Phase margin` by `nptelhrd`. Link: `https://www.youtube.com/watch?v=hDc4UD2iHio`
 - Why this video: it gives the formal stability language needed to understand why a two-stage op-amp needs compensation.
+- Project note: `Laplace-vs-Fourier-for-Op-Amp-Analysis.md`
+- Why this note: it explains why Laplace-domain thinking is deeper than Fourier-only thinking for poles, damping, transients, and compensated op-amp stability.
 - [TI Precision Labs - Op Amps](https://www.ti.com/video/series/precision-labs/ti-precision-labs-op-amps.html)
 - [Stability - Introduction - TI](https://www.ti.com/video/4080235259001)
 - [Circuit stability analysis and compensation schemes - TI](https://www.ti.com/lit/pdf/slypa06)
